@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de costos y rentabilidad</title>
+<style>
+:root{--bg:#eef1f3;--card:#fff;--ink:#1d2a33;--muted:#5d6b75;--line:#d5dce1;--main:#0f5c63;--soft:#e1f0f1;--warn:#b3261e;--ok:#1b7a3e;--c1:#0f5c63;--c2:#d98b1e;--c3:#4a6fa5;--c4:#8a6f9e}
+@media(prefers-color-scheme:dark){:root{--bg:#12191d;--card:#1b252b;--ink:#e6edf0;--muted:#9aa9b2;--line:#33434c;--main:#4fb3bc;--soft:#1f3a3e;--warn:#ff8a80;--ok:#6fd18f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.7rem;margin:0 0 4px}
+.sub{color:var(--muted);margin:0 0 20px}
+.grid{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start}
+@media(max-width:860px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+.card h2{font-size:1.05rem;margin:0 0 2px}
+.hint{color:var(--muted);font-size:.85rem;margin:0 0 10px}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:3px}
+input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+input:focus,button:focus-visible{outline:2px solid var(--main);outline-offset:1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row2 .full{grid-column:1/-1}
+.line{display:grid;grid-template-columns:2fr 1fr 1fr 1fr 34px;gap:8px;align-items:end;margin-bottom:8px}
+.line .sub-t{padding:8px 0;font-weight:600;text-align:right;white-space:nowrap}
+.heads{font-size:.78rem;color:var(--muted)}
+.line.heads{margin-bottom:4px}
+.line.heads span:nth-child(4){text-align:right}
+@media(max-width:620px){.line{grid-template-columns:1fr 1fr;border-bottom:1px solid var(--line);padding-bottom:8px}.line.heads{display:none}.line .sub-t{text-align:left}}
+button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:7px 12px}
+button.del{padding:7px 0;color:var(--warn)}
+button.add{border-style:dashed;color:var(--main);border-color:var(--main)}
+button.primary{background:var(--main);color:var(--bg);border-color:var(--main)}
+.tot{display:flex;justify-content:space-between;margin-top:10px;font-weight:600}
+.side{position:sticky;top:12px}
+@media(max-width:860px){.side{position:static}}
+.big{font-size:2rem;font-weight:700;line-height:1.1}
+.kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line)}
+.kv:last-of-type{border:0}
+.pos{color:var(--ok)}.neg{color:var(--warn)}
+.bar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:var(--line);margin:10px 0 6px}
+.leg{font-size:.8rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px}
+.verdict{padding:10px 12px;border-radius:8px;background:var(--soft);margin-top:12px;font-size:.92rem}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media print{.actions,.add,.del{display:none}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Calculadora de costos y rentabilidad</h1>
+  <p class="sub">Cargá los costos de un lote de producción y mirá cuánto cuesta cada unidad y cuánto ganás.</p>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Datos del producto</h2>
+        <p class="hint">Un "lote" es lo que producís o comprás de una vez.</p>
+        <div class="row2">
+          <div class="full"><label for="prod">Nombre del producto</label><input id="prod" placeholder="Ej: Alfajores caseros"></div>
+          <div><label for="uds">Unidades del lote</label><input id="uds" type="number" min="0" step="any" value="100"></div>
+          <div><label for="precio">Precio de venta por unidad ($)</label><input id="precio" type="number" min="0" step="any" value="0"></div>
+          <div><label for="margen">Margen de ganancia deseado (%)</label><input id="margen" type="number" min="0" max="99" step="any" value="30"></div>
+          <div><label for="merma">Merma o pérdida estimada (%)</label><input id="merma" type="number" min="0" max="99" step="any" value="0"></div>
+        </div>
+      </div>
+
+      <div id="secciones"></div>
+    </div>
+
+    <aside class="side">
+      <div class="card">
+        <h2>Resultado</h2>
+        <p class="hint" id="rProd">Producto sin nombre</p>
+        <div class="big" id="rUnit">$ 0,00</div>
+        <p class="hint">costo por unidad vendible</p>
+        <div class="bar" id="bar"></div>
+        <div class="leg" id="leg"></div>
+        <div style="margin-top:10px">
+          <div class="kv"><span>Costo total del lote</span><b id="rTotal">$ 0,00</b></div>
+          <div class="kv"><span>Ingreso por ventas</span><b id="rIng">$ 0,00</b></div>
+          <div class="kv"><span>Ganancia total</span><b id="rGan">$ 0,00</b></div>
+          <div class="kv"><span>Ganancia por unidad</span><b id="rGanU">$ 0,00</b></div>
+          <div class="kv"><span>Margen sobre venta</span><b id="rMar">0 %</b></div>
+          <div class="kv"><span>Rentabilidad sobre costo</span><b id="rRoi">0 %</b></div>
+          <div class="kv"><span>Precio sugerido (margen deseado)</span><b id="rSug">$ 0,00</b></div>
+          <div class="kv"><span>Unidades para no perder</span><b id="rEq">0</b></div>
+        </div>
+        <div class="verdict" id="verdict">Cargá costos y un precio de venta para ver si el producto es rentable.</div>
+        <div class="actions">
+          <button class="primary" onclick="window.print()">Imprimir / PDF</button>
+          <button onclick="reiniciar()">Borrar todo</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+const SECCIONES=[
+ {id:"insumos",t:"Insumos y materia prima",h:"Ingredientes, envases, etiquetas, materiales.",c:"var(--c1)",ph:["Ej: Harina","Cantidad","Costo por unidad ($)"],ej:[["",1,0]]},
+ {id:"mano",t:"Mano de obra",h:"Empleados u horas de trabajo. Cantidad = horas, costo = valor de la hora.",c:"var(--c2)",ph:["Ej: Operario","Horas","Costo por hora ($)"],ej:[["",1,0]]},
+ {id:"luz",t:"Luz y servicios",h:"Cantidad = kWh consumidos (o m³ de gas, etc.), costo = precio por kWh.",c:"var(--c3)",ph:["Ej: Luz del horno","kWh","Precio por kWh ($)"],ej:[["Luz",1,0]]},
+ {id:"otros",t:"Otros costos",h:"Alquiler, transporte, impuestos, comisiones, mantenimiento (la parte que corresponde al lote).",c:"var(--c4)",ph:["Ej: Flete","Cantidad","Costo ($)"],ej:[["",1,0]]}
+];
+const KEY="calc_costos_v1";
+let datos=null;
+const $=id=>document.getElementById(id);
+const fmt=n=>"$ "+(isFinite(n)?n:0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct=n=>(isFinite(n)?n:0).toLocaleString("es-AR",{maximumFractionDigits:1})+" %";
+const num=v=>{const n=parseFloat(v);return isNaN(n)?0:n};
+
+function inicial(){const d={prod:"",uds:100,precio:0,margen:30,merma:0};SECCIONES.forEach(s=>d[s.id]=s.ej.map(e=>({n:e[0],q:e[1],p:e[2]})));return d}
+function cargar(){try{const r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return inicial()}
+function guardar(){try{localStorage.setItem(KEY,JSON.stringify(datos))}catch(e){}}
+
+function dibujar(){
+  $("prod").value=datos.prod;$("uds").value=datos.uds;$("precio").value=datos.precio;$("margen").value=datos.margen;$("merma").value=datos.merma;
+  $("secciones").innerHTML=SECCIONES.map(s=>`
+   <div class="card" id="sec-${s.id}">
+     <h2>${s.t}</h2><p class="hint">${s.h}</p>
+     <div class="line heads"><span>Descripción</span><span>${s.ph[1]}</span><span>${s.ph[2].replace(" ($)","")}</span><span>Subtotal</span><span></span></div>
+     <div id="l-${s.id}"></div>
+     <button class="add" onclick="agregar('${s.id}')">+ Agregar línea</button>
+     <div class="tot"><span>Total ${s.t.toLowerCase()}</span><span id="t-${s.id}">$ 0,00</span></div>
+   </div>`).join("");
+  SECCIONES.forEach(s=>lineas(s));
+  calcular();
+}
+function lineas(s){
+  $("l-"+s.id).innerHTML=datos[s.id].map((l,i)=>`
+   <div class="line">
+     <div><input aria-label="Descripción" placeholder="${s.ph[0]}" value="${(l.n||"").replace(/"/g,"&quot;")}" oninput="editar('${s.id}',${i},'n',this.value)"></div>
+     <div><input aria-label="${s.ph[1]}" type="number" min="0" step="any" value="${l.q}" oninput="editar('${s.id}',${i},'q',this.value)"></div>
+     <div><input aria-label="${s.ph[2]}" type="number" min="0" step="any" value="${l.p}" oninput="editar('${s.id}',${i},'p',this.value)"></div>
+     <div class="sub-t" id="s-${s.id}-${i}">$ 0,00</div>
+     <button class="del" title="Quitar línea" aria-label="Quitar línea" onclick="quitar('${s.id}',${i})">✕</button>
+   </div>`).join("");
+}
+function editar(sec,i,k,v){datos[sec][i][k]=k==="n"?v:num(v);calcular()}
+function agregar(sec){datos[sec].push({n:"",q:1,p:0});lineas(SECCIONES.find(s=>s.id===sec));calcular()}
+function quitar(sec,i){datos[sec].splice(i,1);lineas(SECCIONES.find(s=>s.id===sec));calcular()}
+function reiniciar(){if(confirm("¿Borrar todos los datos y empezar de nuevo?")){datos=inicial();dibujar();guardar()}}
+
+function calcular(){
+  datos.prod=$("prod").value;datos.uds=num($("uds").value);datos.precio=num($("precio").value);
+  datos.margen=Math.min(99,num($("margen").value));datos.merma=Math.min(99,num($("merma").value));
+
+  const tot={};let total=0;
+  SECCIONES.forEach(s=>{
+    let t=0;
+    datos[s.id].forEach((l,i)=>{const st=num(l.q)*num(l.p);t+=st;const e=$(`s-${s.id}-${i}`);if(e)e.textContent=fmt(st)});
+    tot[s.id]=t;total+=t;$("t-"+s.id).textContent=fmt(t);
+  });
+
+  const vendibles=datos.uds*(1-datos.merma/100);
+  const unit=vendibles>0?total/vendibles:0;
+  const ing=vendibles*datos.precio;
+  const gan=ing-total;
+  const ganU=datos.precio-unit;
+  const mar=ing>0?gan/ing*100:0;
+  const roi=total>0?gan/total*100:0;
+  const sug=unit/(1-datos.margen/100);
+  const eq=datos.precio>0?Math.ceil(total/datos.precio):0;
+
+  $("rProd").textContent=datos.prod||"Producto sin nombre";
+  $("rUnit").textContent=fmt(unit);
+  $("rTotal").textContent=fmt(total);
+  $("rIng").textContent=fmt(ing);
+  const g=$("rGan");g.textContent=fmt(gan);g.className=gan>0?"pos":gan<0?"neg":"";
+  const gu=$("rGanU");gu.textContent=fmt(ganU);gu.className=ganU>0?"pos":ganU<0?"neg":"";
+  $("rMar").textContent=pct(mar);$("rRoi").textContent=pct(roi);
+  $("rSug").textContent=fmt(sug);
+  $("rEq").textContent=datos.precio>0?eq.toLocaleString("es-AR")+" de "+Math.round(vendibles).toLocaleString("es-AR"):"—";
+
+  $("bar").innerHTML=SECCIONES.map(s=>`<div style="width:${total>0?tot[s.id]/total*100:0}%;background:${s.c}"></div>`).join("");
+  $("leg").innerHTML=SECCIONES.map(s=>`<span><i style="background:${s.c}"></i>${s.t.split(" ")[0]} ${total>0?Math.round(tot[s.id]/total*100):0}%</span>`).join("");
+
+  let v;
+  if(total===0)v="Cargá costos y un precio de venta para ver si el producto es rentable.";
+  else if(datos.precio===0)v=`Para ganar un ${datos.margen}% sobre la venta, tendrías que vender a ${fmt(sug)} por unidad.`;
+  else if(gan<0)v=`Con este precio perdés ${fmt(-ganU)} por unidad. Necesitás vender al menos a ${fmt(unit)} para no perder, y a ${fmt(sug)} para llegar a tu margen del ${datos.margen}%.`;
+  else if(mar<datos.margen)v=`Ganás ${fmt(ganU)} por unidad, pero tu margen (${pct(mar)}) queda por debajo del ${datos.margen}% deseado. El precio sugerido es ${fmt(sug)}.`;
+  else v=`El producto es rentable: ganás ${fmt(ganU)} por unidad y tu margen (${pct(mar)}) alcanza el objetivo.`;
+  $("verdict").textContent=v;
+  guardar();
+}
+["prod","uds","precio","margen","merma"].forEach(id=>document.addEventListener("input",e=>{if(e.target.id===id)calcular()}));
+datos=cargar();dibujar();
+</script>
+</body>
+</html>
